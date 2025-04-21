@@ -161,12 +161,20 @@ export default function DisastersPage() {
 
   if (loading && disasters.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-500 mb-4"></div>
-          <p className="text-lg text-muted-foreground">
-            Loading disaster data...
-          </p>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center space-y-6">
+          <div className="relative w-24 h-24 mx-auto">
+            <AlertTriangle className="w-24 h-24 text-red-500/20" />
+            <AlertTriangle className="absolute inset-0 w-24 h-24 text-red-500 animate-pulse" />
+          </div>
+          <div className="space-y-3">
+            <p className="text-xl font-medium text-foreground animate-pulse">
+              Loading disaster data...
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Fetching updates from PAGASA and PHIVOLCS
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -174,25 +182,29 @@ export default function DisastersPage() {
 
   if (error && disasters.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center max-w-md">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-red-500 mb-2">
-            Error Loading Data
-          </h2>
-          <p className="text-muted-foreground mb-4">{error}</p>
-          {retryCount < 3 && (
-            <p className="text-sm text-muted-foreground">
-              Retrying in {5 - retryCount} seconds... (Attempt {retryCount + 1}
-              /3)
-            </p>
-          )}
-          <button
-            onClick={fetchDisasters}
-            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
-          >
-            Try Again
-          </button>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center max-w-md space-y-4">
+          <div className="relative mx-auto w-16 h-16">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <AlertCircle className="h-12 w-12 text-red-500 animate-pulse" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-semibold text-red-500">Error Loading Data</h2>
+            <p className="text-muted-foreground">{error}</p>
+            {retryCount < 3 && (
+              <p className="text-sm text-muted-foreground">
+                Retrying in {5 - retryCount} seconds... (Attempt {retryCount + 1}/3)
+              </p>
+            )}
+            <Button
+              variant="destructive"
+              onClick={fetchDisasters}
+              className="mt-4"
+            >
+              Try Again
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -242,7 +254,7 @@ export default function DisastersPage() {
         {/* Map Section */}
         <div className="lg:col-span-2 relative">
           <div className="sticky top-20 z-10">
-            <div className="h-[calc(100vh-10rem)] rounded-lg overflow-hidden shadow-lg">
+            <div className="h-[600px] sm:h-[700px] lg:h-[600px] rounded-lg overflow-hidden shadow-lg border">
               <Map 
                 disasters={disasters} 
                 onDisasterSelect={setSelectedDisaster}
@@ -256,7 +268,7 @@ export default function DisastersPage() {
         {/* Disaster List */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold mb-4">Recent Disasters</h2>
-          <div className="space-y-4 min-h-[calc(100vh-15rem)]">
+          <div className="space-y-4 overflow-y-auto h-[600px] sm:h-[700px] lg:h-[800px] pr-2">
             {currentDisasters.map((disaster) => (
               <Card
                 key={disaster.id}

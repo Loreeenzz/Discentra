@@ -63,12 +63,6 @@ export default function NavBar() {
                   isMobile
                 />
                 <NavItem
-                  href="/disasters"
-                  icon={<Globe className="h-5 w-5 text-green-500" />}
-                  label="PH Disasters"
-                  isMobile
-                />
-                <NavItem
                   href="/ai-assistant"
                   icon={<MessageSquareText className="h-5 w-5 text-blue-500" />}
                   label="AI Disaster Assistant"
@@ -86,11 +80,6 @@ export default function NavBar() {
               href="/"
               icon={<AlertOctagon className="h-5 w-5 text-red-500" />}
               label="Emergency SOS"
-            />
-            <NavItem
-              href="/disasters"
-              icon={<Globe className="h-5 w-5 text-green-500" />}
-              label="PH Disasters"
             />
             <NavItem
               href="/ai-assistant"

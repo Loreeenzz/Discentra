@@ -59,6 +59,65 @@ interface SpeechRecognition extends EventTarget {
   onend: (() => void) | null;
 }
 
+let input = "";
+
+async function sendSOSMessage() {
+    try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                Authorization: process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1:free',
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are a SOS messenger, You specify the details in 160 characters. Your tone must be in a paragraph form and act as the person seeking help. You must be intelligent when the user gives you a single clue. Do not specify your character limit indication.",
+                    },
+                    {
+                      role: "user",
+                      content: [
+                          {
+                              type: "text",
+                              text: input,
+                          },
+                      ],
+                  },
+              ],
+          }),
+      })
+
+      const data = await response.json()
+        let markdownText = data.choices?.[0]?.message?.content
+
+        // Convert markdown to plain text
+        const plainText = markdownText.replace(/<[^>]*>/g, '').replace(/^["']|["']$/g, '') // Remove HTML tags and quotes
+
+        const smsResponse = await fetch('https://api.httpsms.com/v1/messages/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.NEXT_PUBLIC_HTTPSMS_API_KEY || "" // Include this if your API requires authentication
+            },
+            body: JSON.stringify({
+              "content": plainText,
+              "encrypted": false,
+              "from": process.env.NEXT_PUBLIC_SENDERNO || "",
+              "request_id": "153554b5-ae44-44a0-8f4f-7bbac5657ad4",
+              "send_at": "2022-06-05T14:26:09.527976+03:00", // Use current time
+              "to": process.env.NEXT_PUBLIC_RECEIVERNO || ""
+          })
+      })
+
+      const smsData = await smsResponse.json()
+      console.log(smsData)
+  } catch (error) {
+      console.error('Error:', error)
+  }
+}
+
 export default function EmergencySOSPage() {
   // SOS Button state
   const [isPressed, setIsPressed] = useState(false);
@@ -73,12 +132,38 @@ export default function EmergencySOSPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const [location, setLocation] = useState("");
 
   // Add state for speech recognition support
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
 
   // Check if form is filled
   const isFormFilled = emergencyType && description.trim().length > 0;
+
+  useEffect(() => {
+    // Get user's location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            
+            // Fetch location name using reverse geocoding
+            const locationResponse = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+            );
+            const locationData = await locationResponse.json();
+            setLocation(locationData.display_name.split(",")[0] + ", " + locationData.display_name.split(",")[1]);
+          } catch (error) {
+            console.error('Error fetching location:', error);
+          }
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+        }
+      );
+    }
+  }, []);
 
   // Load audio when component mounts
   useEffect(() => {
@@ -175,6 +260,8 @@ export default function EmergencySOSPage() {
     setTimeout(() => {
       setIsPressed(false);
       setIsSubmitting(false);
+      input = `Emergency Type: ${emergencyType}, Description: ${description}, Estimated Location: ${location}`;
+      sendSOSMessage();
       setIsSubmitted(true);
 
       setTimeout(() => {
