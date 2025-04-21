@@ -65,7 +65,7 @@ export default function NavBar() {
                 <NavItem
                   href="/disasters"
                   icon={<Globe className="h-5 w-5 text-green-500" />}
-                  label="Global Disasters"
+                  label="PH Disasters"
                   isMobile
                 />
                 <NavItem
@@ -90,7 +90,7 @@ export default function NavBar() {
             <NavItem
               href="/disasters"
               icon={<Globe className="h-5 w-5 text-green-500" />}
-              label="Global Disasters"
+              label="PH Disasters"
             />
             <NavItem
               href="/ai-assistant"
