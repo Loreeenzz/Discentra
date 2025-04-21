@@ -1,80 +1,161 @@
 import { NextResponse } from "next/server";
+import axios from "axios";
 
-// Temporary real Philippine disaster data
-const PHILIPPINES_DISASTERS = [
-  {
-    id: "typhoon-man-yi-2024",
-    name: "Typhoon Man-Yi (Yolanda)",
-    type: "Typhoon",
-    status: "Active",
-    date: "2024-02-18",
-    countries: ["Philippines"],
-    description: "Tropical Storm Man-yi (locally known as Yolanda) brings heavy rainfall and strong winds to parts of Eastern Visayas and Mindanao.",
-    coordinates: {
-      lat: 11.2543,
-      lng: 125.0255  // Tacloban City area
-    }
-  },
+// Types for our disaster data
+interface DisasterData {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  date: string;
+  countries: string[];
+  description: string;
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
+  source: string;
+  alertLevel?: string;
+}
+
+async function fetchPAGASAWeatherData() {
+  try {
+    // Using PAGASA's public API (you'll need to register for an API key)
+    const response = await axios.get(
+      `https://api.pagasa.dost.gov.ph/api/weather/bulletin`,
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.PAGASA_API_KEY}`
+        }
+      }
+    );
+    
+    return response.data.map((bulletin: any) => ({
+      id: `weather-${bulletin.id}`,
+      name: bulletin.title,
+      type: "Weather",
+      status: "Active",
+      date: new Date().toISOString(),
+      countries: ["Philippines"],
+      description: bulletin.description,
+      coordinates: {
+        lat: bulletin.latitude || 14.5995, // Manila coordinates as fallback
+        lng: bulletin.longitude || 120.9842
+      },
+      source: "PAGASA"
+    }));
+  } catch (error) {
+    console.error("Error fetching PAGASA data:", error);
+    return [];
+  }
+}
+
+async function fetchPHIVOLCSData() {
+  try {
+    // Using PHIVOLCS's public API (you'll need to register for an API key)
+    const response = await axios.get(
+      `https://earthquake.phivolcs.dost.gov.ph/api/earthquake/latest`,
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.PHIVOLCS_API_KEY}`
+        }
+      }
+    );
+
+    return response.data.map((event: any) => ({
+      id: `earthquake-${event.id}`,
+      name: `M${event.magnitude} Earthquake - ${event.location}`,
+      type: "Earthquake",
+      status: "Monitoring",
+      date: event.datetime,
+      countries: ["Philippines"],
+      description: `Magnitude ${event.magnitude} earthquake detected at depth ${event.depth}km. ${event.description}`,
+      coordinates: {
+        lat: event.latitude,
+        lng: event.longitude
+      },
+      source: "PHIVOLCS"
+    }));
+  } catch (error) {
+    console.error("Error fetching PHIVOLCS data:", error);
+    return [];
+  }
+}
+
+async function fetchVolcanoData() {
+  try {
+    // Using PHIVOLCS's volcano monitoring API
+    const response = await axios.get(
+      `https://volcano.phivolcs.dost.gov.ph/api/bulletin/latest`,
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.PHIVOLCS_API_KEY}`
+        }
+      }
+    );
+
+    return response.data.map((volcano: any) => ({
+      id: `volcano-${volcano.id}`,
+      name: `${volcano.name} Volcano Activity`,
+      type: "Volcanic Activity",
+      status: "Ongoing",
+      date: volcano.datetime,
+      countries: ["Philippines"],
+      description: volcano.description,
+      coordinates: {
+        lat: volcano.latitude,
+        lng: volcano.longitude
+      },
+      source: "PHIVOLCS",
+      alertLevel: volcano.alertLevel
+    }));
+  } catch (error) {
+    console.error("Error fetching volcano data:", error);
+    return [];
+  }
+}
+
+// Fallback data in case APIs are unavailable
+const FALLBACK_DISASTERS = [
   {
     id: "taal-volcano-2024",
     name: "Taal Volcano Activity",
     type: "Volcanic Activity",
     status: "Ongoing",
-    date: "2024-02-15",
+    date: new Date().toISOString(),
     countries: ["Philippines"],
     description: "Alert Level 2 maintained over Taal Volcano with increased seismic activity and volcanic gas emissions.",
     coordinates: {
       lat: 14.0024,
-      lng: 120.9977  // Taal Volcano exact location
-    }
-  },
-  {
-    id: "mindanao-quake-2024",
-    name: "Mindanao Earthquake",
-    type: "Earthquake",
-    status: "Monitoring",
-    date: "2024-02-10",
-    countries: ["Philippines"],
-    description: "6.1 magnitude earthquake struck off the coast of Davao Oriental, with aftershocks continuing in the region.",
-    coordinates: {
-      lat: 6.7585,
-      lng: 126.3393  // Davao Oriental area
-    }
-  },
-  {
-    id: "mayon-volcano-2024",
-    name: "Mayon Volcano Alert",
-    type: "Volcanic Activity",
-    status: "Ongoing",
-    date: "2024-02-05",
-    countries: ["Philippines"],
-    description: "Alert Level 3 remains in effect for Mayon Volcano with continued lava effusion and volcanic gas emissions.",
-    coordinates: {
-      lat: 13.2557,
-      lng: 123.6853  // Mayon Volcano exact location
-    }
-  },
-  {
-    id: "flooding-visayas-2024",
-    name: "Central Visayas Flooding",
-    type: "Flood",
-    status: "Response",
-    date: "2024-02-01",
-    countries: ["Philippines"],
-    description: "Widespread flooding affects multiple provinces in Central Visayas due to continuous heavy rainfall.",
-    coordinates: {
-      lat: 10.3157,
-      lng: 123.8854  // Cebu City area
-    }
+      lng: 120.9977
+    },
+    source: "PHIVOLCS",
+    alertLevel: "2"
   }
 ];
 
 export async function GET() {
   try {
-    // Return our curated real Philippines disaster data
+    // Fetch data from all sources concurrently
+    const [weatherData, earthquakeData, volcanoData] = await Promise.all([
+      fetchPAGASAWeatherData(),
+      fetchPHIVOLCSData(),
+      fetchVolcanoData()
+    ]);
+
+    // Combine all disaster data
+    const allDisasters = [...weatherData, ...earthquakeData, ...volcanoData];
+
+    // If no data is available, use fallback data
+    const disasters = allDisasters.length > 0 ? allDisasters : FALLBACK_DISASTERS;
+
+    // Sort by date (most recent first)
+    disasters.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
     return NextResponse.json({
       success: true,
-      data: PHILIPPINES_DISASTERS
+      data: disasters,
+      lastUpdated: new Date().toISOString()
     });
   } catch (error) {
     console.error("Error in disasters API route:", error);
@@ -82,6 +163,7 @@ export async function GET() {
       {
         success: false,
         error: error instanceof Error ? error.message : "Failed to fetch disaster data",
+        data: FALLBACK_DISASTERS // Return fallback data on error
       },
       { status: 500 }
     );

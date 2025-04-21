@@ -8,8 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import DOMPurify from "dompurify";
-import { marked } from "marked";
 
 type Message = {
   id: string;
@@ -17,17 +15,6 @@ type Message = {
   sender: "user" | "ai";
   timestamp: Date;
 };
-
-function sanitizeHtml(html: string): string {
-  const sanitizedHtml = DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ["p", "br", "ul", "ol", "li", "strong", "em", "code", "pre", "blockquote", "a"],
-    ALLOWED_ATTR: ["href", "target", "rel"],
-  })
-  return sanitizedHtml
-}
-
-let userInput = "";
-let aiResponse = "";
 
 // Sample responses for demo purposes
 const sampleResponses: Record<string, string> = {
@@ -45,11 +32,6 @@ const sampleResponses: Record<string, string> = {
 };
 
 export default function ChatInterface() {
-  const [input, setInput] = useState("");
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -59,6 +41,10 @@ export default function ChatInterface() {
       timestamp: new Date(),
     },
   ]);
+  const [input, setInput] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -78,49 +64,11 @@ export default function ChatInterface() {
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    userInput = input;
-    getResponse();
     setIsTyping(true);
-  };
 
-  async function getResponse(){
-    try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1:free',
-          messages: [
-            {
-              role: "system",
-              content: "If the context involves upcoming typhoons, track and report them strictly in JSON format. Each typhoon entry must include: 'Name', 'Category', 'Latitude', 'Longitude', 'WindSpeedKPH', and 'ETA'. If the context involves evacuation centers, respond strictly in JSON format as well, with each entry containing: 'Name', 'Latitude', and 'Longitude'. Do not include any explanations or non-JSON content in these cases. If the context is about an earthquake, do NOT return JSON. Instead, provide clear, realistic, and actionable safety guides and instructions in plain text only. For all other cases, respond in a natural, conversational tone and omit unrelated parameters",
-            },
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: userInput,
-                },
-              ],
-            },
-          ],
-        }),
-      })
-  
-      console.log("API Response:", response);
-  
-      const data = await response.json()
-      const markdownText = data.choices?.[0]?.message?.content || "Server is busy, please try again later."
-      const markedText = sanitizeHtml(marked.parse(markdownText).toString())
-      // Convert markdown to plain text
-      const plainText = markdownText.replace(/<[^>]*>/g, '').replace(/^\"|\"$/g, '') // Remove HTML tags and quotes
-      aiResponse = markedText;
-      console.log("aiResponse after setting:", aiResponse);
-
+    // Simulate AI response after a delay
+    setTimeout(() => {
+      const aiResponse = generateResponse(input);
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: aiResponse,
@@ -130,10 +78,8 @@ export default function ChatInterface() {
 
       setMessages((prev) => [...prev, aiMessage]);
       setIsTyping(false);
-    } catch (error) {
-      console.error("Error: " + error)
-    }
-  }
+    }, 1500);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -218,14 +164,7 @@ export default function ChatInterface() {
                     }
                   `}
                   >
-                    {message.sender === "ai" ? (
-                      <p
-                        className="text-sm"
-                        dangerouslySetInnerHTML={{ __html: message.content }}
-                      />
-                    ) : (
-                      <p className="text-sm">{message.content}</p>
-                    )}
+                    <p className="text-sm">{message.content}</p>
                     <p className="text-xs opacity-70 mt-1">
                       {message.timestamp.toLocaleTimeString([], {
                         hour: "2-digit",

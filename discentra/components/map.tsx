@@ -16,6 +16,8 @@ interface Disaster {
     lat: number;
     lng: number;
   };
+  source: string;
+  alertLevel?: string;
 }
 
 interface MapProps {
@@ -28,17 +30,35 @@ interface MapProps {
   defaultZoom?: number;
 }
 
-// Create a custom icon for disaster markers
-const disasterIcon = L.divIcon({
-  className: "disaster-marker",
-  html: `
-    <div class="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white font-bold">
-      !
-    </div>
-  `,
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
-});
+// Create custom icons for different disaster types
+const createDisasterIcon = (type: string) => {
+  const getColor = () => {
+    switch (type.toLowerCase()) {
+      case 'weather':
+      case 'typhoon':
+        return '#3b82f6'; // blue-500
+      case 'volcanic activity':
+        return '#ef4444'; // red-500
+      case 'earthquake':
+        return '#f97316'; // orange-500
+      case 'flood':
+        return '#3b82f6'; // blue-500
+      default:
+        return '#ef4444'; // red-500
+    }
+  };
+
+  return L.divIcon({
+    className: "disaster-marker",
+    html: `
+      <div class="w-6 h-6 bg-[${getColor()}] rounded-full flex items-center justify-center text-white font-bold shadow-lg border-2 border-white">
+        !
+      </div>
+    `,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+};
 
 export default function Map({ disasters, onDisasterSelect, defaultCenter, defaultZoom }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -50,8 +70,8 @@ export default function Map({ disasters, onDisasterSelect, defaultCenter, defaul
 
     // Initialize the map
     map.current = L.map(mapContainer.current, {
-      center: defaultCenter ? [defaultCenter.lat, defaultCenter.lng] : [20, 0],
-      zoom: defaultZoom || 2,
+      center: defaultCenter ? [defaultCenter.lat, defaultCenter.lng] : [12.8797, 121.7740], // Philippines center
+      zoom: defaultZoom || 6,
       zoomControl: false,
     });
 
@@ -87,7 +107,7 @@ export default function Map({ disasters, onDisasterSelect, defaultCenter, defaul
     disasters.forEach((disaster) => {
       const marker = L.marker(
         [disaster.coordinates.lat, disaster.coordinates.lng],
-        { icon: disasterIcon }
+        { icon: createDisasterIcon(disaster.type) }
       );
 
       marker.on("click", () => onDisasterSelect(disaster));
@@ -97,6 +117,8 @@ export default function Map({ disasters, onDisasterSelect, defaultCenter, defaul
         <div class="p-2">
           <h3 class="font-bold">${disaster.name}</h3>
           <p class="text-sm text-gray-600">${disaster.type}</p>
+          ${disaster.alertLevel ? `<p class="text-sm text-red-500">Alert Level: ${disaster.alertLevel}</p>` : ''}
+          <p class="text-xs text-gray-500 mt-1">Source: ${disaster.source}</p>
         </div>
       `);
 

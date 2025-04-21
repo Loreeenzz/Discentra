@@ -3,8 +3,19 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertTriangle, Info, RefreshCw, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { 
+  AlertTriangle, 
+  Info, 
+  RefreshCw, 
+  AlertCircle, 
+  ChevronLeft, 
+  ChevronRight,
+  CloudRain,
+  Mountain,
+  Waves
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 // Dynamically import the map component to avoid SSR issues
 const Map = dynamic(() => import("@/components/map"), { ssr: false });
@@ -21,9 +32,44 @@ interface Disaster {
     lat: number;
     lng: number;
   };
+  source: string;
+  alertLevel?: string;
 }
 
 const ITEMS_PER_PAGE = 5;
+
+// Icon mapping for different disaster types
+const DisasterIcon = ({ type }: { type: string }) => {
+  switch (type.toLowerCase()) {
+    case 'weather':
+    case 'typhoon':
+      return <CloudRain className="h-5 w-5 text-blue-500" />;
+    case 'volcanic activity':
+      return <Mountain className="h-5 w-5 text-red-500" />;
+    case 'earthquake':
+      return <AlertTriangle className="h-5 w-5 text-orange-500" />;
+    case 'flood':
+      return <Waves className="h-5 w-5 text-blue-500" />;
+    default:
+      return <AlertCircle className="h-5 w-5 text-red-500" />;
+  }
+};
+
+// Status color mapping
+const getStatusColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'active':
+      return 'bg-red-500';
+    case 'monitoring':
+      return 'bg-yellow-500';
+    case 'ongoing':
+      return 'bg-orange-500';
+    case 'response':
+      return 'bg-blue-500';
+    default:
+      return 'bg-gray-500';
+  }
+};
 
 export default function DisastersPage() {
   const [disasters, setDisasters] = useState<Disaster[]>([]);
@@ -72,6 +118,8 @@ export default function DisastersPage() {
               lat: Number(disaster.coordinates?.lat) || 0,
               lng: Number(disaster.coordinates?.lng) || 0,
             },
+            source: String(disaster.source || "Unknown Source"),
+            alertLevel: disaster.alertLevel,
           };
         });
 
@@ -153,23 +201,27 @@ export default function DisastersPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Philippines Disasters</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Philippines Disasters</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Real-time disaster monitoring from PAGASA and PHIVOLCS
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           {lastUpdated && (
             <p className="text-sm text-muted-foreground">
               Last updated: {lastUpdated}
             </p>
           )}
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={fetchDisasters}
-            className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
-              loading ? "animate-spin" : ""
-            }`}
-            title="Refresh data"
             disabled={loading}
+            className={loading ? "animate-spin" : ""}
           >
             <RefreshCw className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -187,7 +239,7 @@ export default function DisastersPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Map Section - Fixed height and sticky positioning */}
+        {/* Map Section */}
         <div className="lg:col-span-2 relative">
           <div className="sticky top-20 z-10">
             <div className="h-[calc(100vh-10rem)] rounded-lg overflow-hidden shadow-lg">
@@ -201,7 +253,7 @@ export default function DisastersPage() {
           </div>
         </div>
 
-        {/* Disaster List with Pagination */}
+        {/* Disaster List */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold mb-4">Recent Disasters</h2>
           <div className="space-y-4 min-h-[calc(100vh-15rem)]">
@@ -217,15 +269,27 @@ export default function DisastersPage() {
               >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-red-500 mt-1" />
-                    <div>
-                      <h3 className="font-semibold">{disaster.name}</h3>
+                    <DisasterIcon type={disaster.type} />
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-semibold">{disaster.name}</h3>
+                        <Badge variant="outline" className={getStatusColor(disaster.status)}>
+                          {disaster.status}
+                        </Badge>
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         {disaster.type} • {disaster.countries.join(", ")}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(disaster.date).toLocaleDateString()}
-                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(disaster.date).toLocaleDateString()} • {disaster.source}
+                        </p>
+                        {disaster.alertLevel && (
+                          <Badge variant="secondary">
+                            Alert Level {disaster.alertLevel}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -262,21 +326,24 @@ export default function DisastersPage() {
 
       {/* Selected Disaster Details */}
       {selectedDisaster && (
-        <div className="fixed bottom-4 right-4 w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 z-20">
+        <div className="fixed bottom-4 right-4 w-full max-w-md bg-background rounded-lg shadow-lg p-4 z-20 border">
           <div className="flex items-start gap-3">
-            <Info className="h-5 w-5 text-blue-500 mt-1" />
-            <div>
-              <h3 className="font-semibold">{selectedDisaster.name}</h3>
+            <DisasterIcon type={selectedDisaster.type} />
+            <div className="flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="font-semibold">{selectedDisaster.name}</h3>
+                <Badge variant="outline" className={getStatusColor(selectedDisaster.status)}>
+                  {selectedDisaster.status}
+                </Badge>
+              </div>
               <p className="text-sm text-muted-foreground">
-                Type: {selectedDisaster.type}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Status: {selectedDisaster.status}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Countries: {selectedDisaster.countries.join(", ")}
+                Source: {selectedDisaster.source}
+                {selectedDisaster.alertLevel && ` • Alert Level ${selectedDisaster.alertLevel}`}
               </p>
               <p className="text-sm mt-2">{selectedDisaster.description}</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Last updated: {new Date(selectedDisaster.date).toLocaleString()}
+              </p>
             </div>
           </div>
         </div>

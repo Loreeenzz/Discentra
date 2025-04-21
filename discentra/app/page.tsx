@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { AlertTriangle, Mic, Check } from "lucide-react";
+import { AlertTriangle, Mic, Check, Flame, HeartPulse, Droplets, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import WeatherInfo from "@/components/weather-info";
 
 // Add type definitions for Web Speech API
 declare global {
@@ -56,65 +57,6 @@ interface SpeechRecognition extends EventTarget {
     | ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any)
     | null;
   onend: (() => void) | null;
-}
-
-let input = "";
-
-async function sendSOSMessage() {
-    try {
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                Authorization: process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "",
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1:free',
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are a SOS messenger, You specify the details in 160 characters. Your tone must be in a paragraph form and act as the person seeking help. You must be intelligent when the user gives you a single clue. Do not specify your character limit indication.",
-                    },
-                    {
-                        role: "user",
-                        content: [
-                            {
-                                type: "text",
-                                text: input,
-                            },
-                        ],
-                    },
-                ],
-            }),
-        })
-
-        const data = await response.json()
-        let markdownText = data.choices?.[0]?.message?.content
-
-        // Convert markdown to plain text
-        const plainText = markdownText.replace(/<[^>]*>/g, '').replace(/^["']|["']$/g, '') // Remove HTML tags and quotes
-
-        const smsResponse = await fetch('https://api.httpsms.com/v1/messages/send', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': process.env.NEXT_PUBLIC_HTTPSMS_API_KEY || "" // Include this if your API requires authentication
-            },
-            body: JSON.stringify({
-                "content": plainText,
-                "encrypted": false,
-                "from": process.env.NEXT_PUBLIC_SENDERNO || "",
-                "request_id": "153554b5-ae44-44a0-8f4f-7bbac5657ad4",
-                "send_at": "2022-06-05T14:26:09.527976+03:00", // Use current time
-                "to": process.env.NEXT_PUBLIC_RECEIVERNO || ""
-            })
-        })
-
-        const smsData = await smsResponse.json()
-        console.log(smsData)
-    } catch (error) {
-        console.error('Error:', error)
-    }
 }
 
 export default function EmergencySOSPage() {
@@ -233,8 +175,6 @@ export default function EmergencySOSPage() {
     setTimeout(() => {
       setIsPressed(false);
       setIsSubmitting(false);
-      input = `Emergency Type: ${emergencyType}, Description: ${description}`;
-      sendSOSMessage();
       setIsSubmitted(true);
 
       setTimeout(() => {
@@ -279,6 +219,11 @@ export default function EmergencySOSPage() {
         Press the SOS button below to report an emergency. Your location will be
         automatically shared with emergency services.
       </p>
+
+      {/* Weather Info */}
+      <div className="mb-8 w-full max-w-sm">
+        <WeatherInfo />
+      </div>
 
       {/* SOS Button */}
       <div className="relative mb-12">
@@ -336,30 +281,61 @@ export default function EmergencySOSPage() {
         <Card className="w-full">
           <CardContent className="pt-6">
             <div className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="emergency-type" className="text-sm font-medium">
+              <div className="space-y-3">
+                <label htmlFor="emergency-type" className="text-sm font-medium block mb-2">
                   Emergency Type
                 </label>
-                <Select
-                  value={emergencyType}
-                  onValueChange={setEmergencyType}
-                  disabled={isSubmitting || isSubmitted}
-                >
-                  <SelectTrigger id="emergency-type">
-                    <SelectValue placeholder="Select emergency type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="accident">Accident</SelectItem>
-                    <SelectItem value="fire">Fire</SelectItem>
-                    <SelectItem value="medical">Medical</SelectItem>
-                    <SelectItem value="flood">Flood</SelectItem>
-                    <SelectItem value="earthquake">Earthquake</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <Button
+                    variant={emergencyType === "accident" ? "default" : "outline"}
+                    onClick={() => setEmergencyType("accident")}
+                    disabled={isSubmitting || isSubmitted}
+                    className="flex items-center gap-2"
+                  >
+                    <AlertCircle className="h-4 w-4" />
+                    Accident
+                  </Button>
+                  <Button
+                    variant={emergencyType === "fire" ? "default" : "outline"}
+                    onClick={() => setEmergencyType("fire")}
+                    disabled={isSubmitting || isSubmitted}
+                    className="flex items-center gap-2"
+                  >
+                    <Flame className="h-4 w-4" />
+                    Fire
+                  </Button>
+                  <Button
+                    variant={emergencyType === "medical" ? "default" : "outline"}
+                    onClick={() => setEmergencyType("medical")}
+                    disabled={isSubmitting || isSubmitted}
+                    className="flex items-center gap-2"
+                  >
+                    <HeartPulse className="h-4 w-4" />
+                    Medical
+                  </Button>
+                  <Button
+                    variant={emergencyType === "flood" ? "default" : "outline"}
+                    onClick={() => setEmergencyType("flood")}
+                    disabled={isSubmitting || isSubmitted}
+                    className="flex items-center gap-2"
+                  >
+                    <Droplets className="h-4 w-4" />
+                    Flood
+                  </Button>
+                  <Button
+                    variant={emergencyType === "earthquake" ? "default" : "outline"}
+                    onClick={() => setEmergencyType("earthquake")}
+                    disabled={isSubmitting || isSubmitted}
+                    className="flex items-center gap-2"
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                    Earthquake
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="description" className="text-sm font-medium">
+                <label htmlFor="description" className="text-sm font-medium block mb-2">
                   Describe the Emergency
                 </label>
                 <div className="relative">
