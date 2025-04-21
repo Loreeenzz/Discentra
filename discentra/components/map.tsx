@@ -21,6 +21,11 @@ interface Disaster {
 interface MapProps {
   disasters: Disaster[];
   onDisasterSelect: (disaster: Disaster) => void;
+  defaultCenter?: {
+    lat: number;
+    lng: number;
+  };
+  defaultZoom?: number;
 }
 
 // Create a custom icon for disaster markers
@@ -35,7 +40,7 @@ const disasterIcon = L.divIcon({
   iconAnchor: [12, 12],
 });
 
-export default function Map({ disasters, onDisasterSelect }: MapProps) {
+export default function Map({ disasters, onDisasterSelect, defaultCenter, defaultZoom }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markers = useRef<L.Marker[]>([]);
@@ -45,8 +50,8 @@ export default function Map({ disasters, onDisasterSelect }: MapProps) {
 
     // Initialize the map
     map.current = L.map(mapContainer.current, {
-      center: [20, 0],
-      zoom: 2,
+      center: defaultCenter ? [defaultCenter.lat, defaultCenter.lng] : [20, 0],
+      zoom: defaultZoom || 2,
       zoomControl: false,
     });
 
@@ -69,7 +74,7 @@ export default function Map({ disasters, onDisasterSelect }: MapProps) {
         map.current.remove();
       }
     };
-  }, []);
+  }, [defaultCenter, defaultZoom]);
 
   useEffect(() => {
     if (!map.current) return;
