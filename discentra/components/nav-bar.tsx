@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AlertOctagon, MessageSquareText, Menu, X } from "lucide-react";
+import { AlertOctagon, MessageSquareText, Menu, X, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
 import { useMobile } from "@/hooks/use-mobile";
@@ -63,6 +63,12 @@ export default function NavBar() {
                   isMobile
                 />
                 <NavItem
+                  href="/disasters"
+                  icon={<Globe className="h-5 w-5 text-green-500" />}
+                  label="Global Disasters"
+                  isMobile
+                />
+                <NavItem
                   href="/ai-assistant"
                   icon={<MessageSquareText className="h-5 w-5 text-blue-500" />}
                   label="AI Disaster Assistant"
@@ -80,6 +86,11 @@ export default function NavBar() {
               href="/"
               icon={<AlertOctagon className="h-5 w-5 text-red-500" />}
               label="Emergency SOS"
+            />
+            <NavItem
+              href="/disasters"
+              icon={<Globe className="h-5 w-5 text-green-500" />}
+              label="Global Disasters"
             />
             <NavItem
               href="/ai-assistant"
