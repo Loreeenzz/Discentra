@@ -59,6 +59,53 @@ const TyphoonMap = dynamic(() => import('./typhoon-map'), {
   loading: () => <div className="h-[400px] w-full rounded-lg bg-gray-100 animate-pulse" />
 });
 
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: SpeechRecognitionErrorEvent) => void;
+  onend: () => void;
+}
+
+interface SpeechRecognitionEvent {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
+
+interface SpeechRecognitionStatic {
+  new (): SpeechRecognition;
+  prototype: SpeechRecognition;
+}
+
+declare global {
+  var SpeechRecognition: SpeechRecognitionStatic | undefined;
+  var webkitSpeechRecognition: SpeechRecognitionStatic | undefined;
+}
+
 function sanitizeHtml(html: string): string {
   const sanitizedHtml = DOMPurify.sanitize(html, {
     ALLOWED_TAGS: ["div", "h2", "h3", "p", "ul", "li", "a", "strong", "span"],
@@ -166,6 +213,7 @@ export default function ChatInterface() {
   const [isTyping, setIsTyping] = useState(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -186,6 +234,38 @@ export default function ChatInterface() {
       setWeatherData(data);
     };
     loadWeatherData();
+  }, []);
+
+  useEffect(() => {
+    // Initialize speech recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0].transcript)
+          .join('');
+        setInput(transcript);
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsRecording(false);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsRecording(false);
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
   }, []);
 
   const handleSend = async () => {
@@ -251,13 +331,18 @@ export default function ChatInterface() {
   };
 
   const toggleRecording = () => {
-    setIsRecording(!isRecording);
-    if (!isRecording) {
-      setTimeout(() => {
-        setIsRecording(false);
-        setInput("What should I do during an earthquake?");
-      }, 3000);
+    if (!recognitionRef.current) {
+      alert('Speech recognition is not supported in your browser.');
+      return;
     }
+
+    if (isRecording) {
+      recognitionRef.current.stop();
+    } else {
+      setInput('');
+      recognitionRef.current.start();
+    }
+    setIsRecording(!isRecording);
   };
 
   const renderMessage = (message: Message) => {
@@ -270,7 +355,7 @@ export default function ChatInterface() {
         if (data.EvacuationCenters && Array.isArray(data.EvacuationCenters)) {
           return (
             <div className="space-y-4 w-full">
-              <h2 className="text-xl font-bold">🏢 Available Evacuation Centers in Cebu</h2>
+              <h2 className="text-xl font-bold">🏢 Available Evacuation Center</h2>
               <EvacuationMap centers={data.EvacuationCenters} />
               <div className="space-y-4">
                 {data.EvacuationCenters.map((center: EvacuationCenter, index: number) => (
